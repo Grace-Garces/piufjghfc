@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grace Garces | Desenvolvedora FullStack .NET</title>
+    <!-- Tailwind CSS para estilização rápida -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fontes estilo Pixel Art -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --sky-blue: #76b6c4;
+            --sunset-orange: #f5b16e;
+            --sand: #d6a47d;
+            --road-color: #4a4a4a;
+            --text-light: #F0E7D8;
+            --text-dark: #2C2C2C;
+            --ui-border: #1a1a1a;
+            --ui-bg: #F0F0F0;
+            --font-title: 'Press Start 2P', cursive;
+            --font-body: 'VT323', monospace;
+        }
+        body {
+            font-family: var(--font-body);
+            font-size: 24px;
+            background-color: #1d0c1f; /* Cor de fundo para o scroll */
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+        #scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #intro-background {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            /* Novo fundo: Pôr do sol no deserto */
+            background: linear-gradient(to bottom, var(--sky-blue) 0%, var(--sunset-orange) 60%, var(--sand) 60%);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        /* --- Elementos do Cenário --- */
+        .cactus {
+            position: absolute;
+            bottom: 25vh;
+            z-index: 2;
+            fill: #4a7852; /* Verde cacto */
+            filter: drop-shadow(3px 3px 0px rgba(0,0,0,0.2));
+        }
+        .cactus .flower {
+            fill: #e85d75; /* Rosa/vermelho da flor */
+        }
+        #cactus-1 { left: 15%; width: 80px; }
+        #cactus-2 { left: 80%; width: 100px; transform: scaleX(-1); }
+
+        .desert-bg, .road {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            z-index: 4;
+        }
+        .desert-bg {
+            bottom: 0; height: 25vh;
+            background: var(--sand);
+        }
+        .road {
+            bottom: 8vh; height: 10vh;
+            background: var(--road-color);
+            border-top: 5px dashed var(--text-light);
+        }
+        #car-container {
+            position: absolute;
+            z-index: 50;
+            bottom: 12vh; width: 150px;
+            height: auto;
+            transform-origin: center center;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        #car-sprite {
+            width: 100%;
+            image-rendering: pixelated;
+            filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.4));
+        }
+        @keyframes idle {
+            0%, 100% { transform: translateY(0) rotate(-0.5deg); }
+            50% { transform: translateY(-2px) rotate(0.5deg); }
+        }
+        .idle { animation: idle .4s infinite ease-in-out; }
+
+        /* --- Outdoor / Nome --- */
+        #outdoor-container {
+            position: absolute;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        #outdoor-sign {
+            background-color: #8b5e34; /* Cor de madeira */
+            border: 5px solid #4d3319;
+            padding: 1.5rem 3rem;
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+        }
+        #outdoor-name {
+            font-family: var(--font-title);
+            color: var(--text-light);
+            font-size: 3rem;
+            text-shadow: 3px 3px 0px #4d3319;
+            /* A mágica da revelação acontece aqui */
+            clip-path: inset(0 100% 0 0);
+        }
+        
+        #title {
+            font-family: var(--font-title);
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.5);
+            position: absolute;
+            left: 50%;
+            top: -200px;
+            transform: translateX(-50%);
+            background: var(--sand);
+            color: var(--text-dark);
+            padding: 0.5rem 1rem;
+            border: 4px solid var(--ui-border);
+            z-index: 20;
+            white-space: nowrap;
+            opacity: 0; /* Começa invisível */
+        }
+        #speech-bubble {
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            background-color: var(--ui-bg);
+            color: var(--text-dark);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 3px solid var(--ui-border);
+            opacity: 0;
+            transform: scale(0) translateX(-50%);
+            transform-origin: bottom center;
+            white-space: nowrap;
+            font-size: 1.2rem;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+        }
+        #speech-bubble::after, #speech-bubble::before {
+            content: '';
+            position: absolute;
+            left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+        }
+        #speech-bubble::after { bottom: -13px; border-top: 13px solid var(--ui-bg); }
+        #speech-bubble::before { bottom: -17px; border-top: 13px solid var(--ui-border); z-index: -1; }
+        
+        #scroll-prompt {
+            position: absolute;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-title);
+            opacity: 0;
+            z-index: 100;
+        }
+        #scroll-prompt .arrow {
+            display: block; margin: 10px auto 0;
+            width: 20px; height: 20px;
+            border-bottom: 3px solid var(--text-light);
+            border-right: 3px solid var(--text-light);
+            transform: rotate(45deg);
+        }
+        .section {
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+            padding: 4rem 2rem;
+            display: flex;
+            align-items: center;
+            background-color: var(--bg-purple-mountains);
+        }
+        .section:nth-of-type(odd) { background-color: #372549; }
+        #intro { height: 100vh; background: transparent; }
+        
+        .content-wrapper {
+            max-width: 600px;
+            width: 90%;
+            margin-left: auto; margin-right: 10%;
+        }
+        .section-title-box {
+            background-color: var(--ui-bg);
+            color: var(--text-dark);
+            border: 4px solid var(--ui-border);
+            padding: 1rem 2rem; display: inline-block;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.3);
+        }
+        .section-title { font-family: var(--font-title); font-size: 2rem; color: var(--text-dark); }
+        .section-text {
+            background-color: var(--ui-bg); color: var(--text-dark);
+            border: 4px solid var(--ui-border); padding: 1.5rem;
+            margin-top: 2rem; box-shadow: 8px 8px 0px rgba(0,0,0,0.3);
+            line-height: 1.5;
+        }
+        .rpg-menu-container { display: flex; gap: 2rem; align-items: flex-start; }
+        .rpg-menu {
+            background-color: var(--ui-bg); border: 4px solid var(--ui-border);
+            padding: 1rem; display: flex; flex-direction: column;
+            gap: 0.5rem; box-shadow: 8px 8px 0px rgba(0,0,0,0.3);
+            flex-shrink: 0;
+        }
+        .rpg-button {
+            font-family: var(--font-title); font-size: 1.2rem;
+            color: var(--text-dark); background: none; border: none;
+            text-align: left; padding: 0.5rem;
+            cursor: pointer; position: relative;
+            transition: transform 0.2s ease;
+        }
+        .rpg-button:hover { transform: translateX(5px); }
+        .rpg-button.active::before, .rpg-button:hover::before {
+            content: '►'; position: absolute;
+            left: -1.5rem; color: var(--text-dark);
+        }
+        .project-showcase { display: none; }
+        .project-showcase.active { display: block; }
+
+        #navbar-rpg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; background-color: rgba(30, 12, 31, 0.8);
+            border-bottom: 4px solid var(--ui-border);
+            padding: 0.5rem 1rem; display: flex;
+            justify-content: center; gap: 1rem;
+            z-index: 200; pointer-events: auto;
+        }
+        .nav-button {
+            font-family: var(--font-title); font-size: 1rem;
+            color: var(--text-light); background-color: var(--road-color);
+            border: 3px solid var(--ui-border); padding: 0.5rem 1rem;
+            text-decoration: none; box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        .nav-button:hover {
+            background-color: var(--sand); color: var(--text-dark);
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <audio id="sound-engine" src="data:audio/mpeg;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" preload="auto"></audio>
+    <audio id="sound-impact" src="data:audio/mpeg;base64,UklGRl9vT19AL0FDSwAAAAMAQTEAAAAAAAD/8lAAAAAASW5mbwAAAA8AAAAFAAAAZGF0YQ==" preload="auto"></audio>
+    <audio id="sound-honk" src="data:audio/mpeg;base64,UklGRqwaABC7wARwAQBATESsAACJWFlBTbk/934cN0D/8lAAAABJbmZvAAAADwAAAAMAAABkYXRh" preload="auto"></audio>
+    <audio id="sound-oops" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==" preload="auto"></audio>
+
+    <nav id="navbar-rpg">
+        <a href="#sobre" class="nav-button">Sobre</a>
+        <a href="#projetos" class="nav-button">Projetos</a>
+        <a href="#contato" class="nav-button">Contato</a>
+    </nav>
+    
+    <div id="scene">
+        <div id="intro-background">
+            <svg id="cactus-1" class="cactus" viewBox="0 0 100 150"><path d="M80 150 C 80 130, 70 120, 50 120 C 30 120, 20 130, 20 150 L 80 150 Z M 50 120 V 30 M 50 80 C 70 80, 80 70, 80 50 V 40 C 80 60, 70 70, 50 70 M 50 60 C 30 60, 20 50, 20 30 V 20 C 20 40, 30 50, 50 50"/><circle class="flower" cx="80" cy="40" r="8"/></svg>
+            <svg id="cactus-2" class="cactus" viewBox="0 0 100 150"><path d="M80 150 C 80 130, 70 120, 50 120 C 30 120, 20 130, 20 150 L 80 150 Z M 50 120 V 20 M 50 70 C 70 70, 85 60, 85 40 V 30 C 85 50, 70 60, 50 60"/><circle class="flower" cx="85" cy="30" r="8"/></svg>
+            <div class="desert-bg"></div>
+            <div class="road"></div>
+        </div>
+        <div id="car-container">
+            <!-- Novo sprite de carro estilo RPG -->
+            <img src="https://www.spriters-resource.com/resources/sheet_icons/4/3716.png" alt="Pixel art de um carro" id="car-sprite">
+            <div id="speech-bubble"></div>
+        </div>
+    </div>
+    
+    <main id="content">
+        <section id="intro" class="section">
+            <div id="outdoor-container">
+                <div id="outdoor-sign">
+                    <h1 id="outdoor-name">Grace Garces</h1>
+                </div>
+                <h2 id="title">Desenvolvedora FullStack .NET</h2>
+            </div>
+            <div id="scroll-prompt">
+                <span>ROLE PARA BAIXO</span>
+                <div class="arrow"></div>
+            </div>
+        </section>
+
+        <section id="sobre" class="section" data-say="Chegamos em 'Sobre Mim!'">
+            <div class="content-wrapper">
+                <div class="section-title-box"><h2 class="section-title">Sobre Mim</h2></div>
+                <div class="section-text"><p>Olá! Sou Grace, uma desenvolvedora apaixonada por criar soluções robustas e experiências digitais memoráveis. Com foco em .NET e um grande interesse por front-end, busco sempre transformar ideias criativas em código limpo e eficiente. Este portfólio é um exemplo disso! :)</p></div>
+            </div>
+        </section>
+
+        <section id="projetos" class="section" data-say="Projetos à frente! Segura firme!">
+            <div class="content-wrapper">
+                <div class="section-title-box"><h2 class="section-title">Projetos</h2></div>
+                <div class="rpg-menu-container mt-8">
+                     <nav class="rpg-menu">
+                        <button class="rpg-button active" data-target="profissionais">Profissionais</button>
+                        <button class="rpg-button" data-target="academicos">Acadêmicos</button>
+                        <button class="rpg-button" data-target="freelance">Freelance</button>
+                    </nav>
+                    <div class="project-content flex-grow">
+                        <div id="profissionais" class="project-showcase active section-text">Aqui você pode listar seus projetos profissionais.</div>
+                        <div id="academicos" class="project-showcase section-text">Mostre seus trabalhos de faculdade e cursos.</div>
+                        <div id="freelance" class="project-showcase section-text">Seus trabalhos como freelancer vêm aqui.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="contato" class="section" data-say="Fim da linha! Vamos conversar?">
+            <div class="content-wrapper">
+                <div class="section-title-box"><h2 class="section-title">Contato</h2></div>
+                <div class="section-text">
+                    <p>Gostou da viagem? Adoraria conversar sobre tecnologia, projetos ou oportunidades. Me encontre nas redes abaixo!</p>
+                    <div class="mt-4 text-2xl">
+                        <a href="#" class="underline hover:text-orange-400">LinkedIn</a> | 
+                        <a href="#" class="underline hover:text-orange-400">GitHub</a> | 
+                        <a href="#" class="underline hover:text-orange-400">Email</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+    
+    <script type="module">
+        gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+        const scene = document.querySelector('#scene');
+        const content = document.querySelector('#content');
+        const carContainer = document.querySelector('#car-container');
+        const carSprite = document.querySelector('#car-sprite');
+        const titleEl = document.querySelector('#title');
+        const bubble = document.querySelector('#speech-bubble');
+        const scrollPrompt = document.querySelector('#scroll-prompt');
+        const introBg = document.querySelector('#intro-background');
+        const sections = gsap.utils.toArray('.section:not(#intro)');
+        const outdoorName = document.querySelector('#outdoor-name');
+        
+        const sounds = {
+            engine: document.querySelector('#sound-engine'),
+            impact: document.querySelector('#sound-impact'),
+            honk: document.querySelector('#sound-honk'),
+            oops: document.querySelector('#sound-oops'),
+        };
+        function playSound(sound) {
+            if (sounds[sound]) {
+                sounds[sound].currentTime = 0;
+                sounds[sound].play().catch(e => console.error("Audio falhou:", e));
+            }
+        }
+        
+        function say(text, duration = 2.5) {
+            bubble.textContent = text;
+            gsap.timeline()
+                .to(bubble, { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(1.7)' })
+                .to(bubble, { opacity: 0, scale: 0, duration: 0.3, ease: 'power2.in' }, `+=${duration}`);
+        }
+
+        carContainer.addEventListener('click', () => {
+            playSound('honk');
+            const nerdJokes = ["Por que o programador usa óculos? Porque ele não consegue C#."];
+            say(nerdJokes[Math.floor(Math.random() * nerdJokes.length)], 3);
+        });
+
+        document.body.style.overflowY = 'hidden';
+        gsap.set(carContainer, { x: '-200px', bottom: '10vh' });
+        gsap.set('#outdoor-container', { opacity: 0 });
+
+        const introTl = gsap.timeline({
+            onComplete: () => {
+                document.body.style.overflowY = 'auto';
+                gsap.to(scrollPrompt, { opacity: 1, duration: 1, y: -10, yoyo: true, repeat: -1 });
+            }
+        });
+
+        introTl
+            .add(() => playSound('engine'))
+            .to('#outdoor-container', { opacity: 1, duration: 0.5 })
+            // O carro anda e revela o nome no outdoor
+            .to(carContainer, { x: '45vw', duration: 4, ease: 'power1.inOut' })
+            .to(outdoorName, { clipPath: 'inset(0 0% 0 0)', duration: 3, ease: 'power1.inOut' }, "-=3.5")
+            // Carro estaciona
+            .to(carContainer, { x: 'calc(50vw + 200px)', duration: 1.5, ease: 'power2.out' }, "-=1")
+            .add(() => carSprite.classList.add('idle'))
+            // Título cai
+            .to(titleEl, { top: '120%', opacity: 1, duration: 1.2, ease: 'bounce.out' }, '+=0.5')
+            .add(() => playSound('impact'), "-=1")
+            .to(scene, { x: '-10px', duration: 0.05, yoyo: true, repeat: 7 }, "-=0.9")
+            .to(carContainer, { y: -40, rotation: 8, duration: 0.2, ease: 'power2.out' }, "-=0.9")
+            .to(carContainer, { y: 0, rotation: 0, duration: 0.8, ease: 'bounce.out' }, "-=0.7")
+            .to(carSprite, { scaleX: -1, duration: 0.4 }, "+=0.2")
+            // Nova fala
+            .add(() => say('Vamos conhecer o portfólio!', 2.5));
+
+        // NOVO: ScrollTrigger dedicado para desaparecer com a cena de introdução
+        gsap.to(['#intro-background', '#outdoor-container'], {
+            opacity: 0,
+            scrollTrigger: {
+                trigger: content,
+                start: "top top",
+                end: "top -20%",
+                scrub: 1,
+            }
+        });
+
+        const scrollTl = gsap.timeline({
+            scrollTrigger: {
+                trigger: content,
+                start: 'top top',
+                end: 'bottom bottom',
+                scrub: 1.5,
+            }
+        });
+
+        // A timeline de scroll agora foca apenas na jornada do carro
+        scrollTl.to(carContainer, { scaleX: 1 }, 0);
+        scrollTl.to(carContainer, { x: '50vw', xPercent: -50, ease: 'none' }, 0);
+
+        sections.forEach((section) => {
+            const contentWrapper = section.querySelector('.content-wrapper');
+            if (!contentWrapper) return;
+            const parkingSpotX = contentWrapper.offsetLeft - carContainer.offsetWidth - 60;
+
+            scrollTl
+                .call(() => carSprite.classList.remove('idle'))
+                .to(carContainer, { x: parkingSpotX, rotation: -12, ease: 'power2.inOut' })
+                .call(() => {
+                    say(section.dataset.say);
+                    carSprite.classList.add('idle');
+                })
+                .to(carContainer, { duration: 1.5 }) 
+                .call(() => carSprite.classList.remove('idle'))
+                .to(carContainer, { x: '50vw', xPercent: -50, rotation: 0, ease: 'power2.inOut' });
+        });
+
+        const navLinks = document.querySelectorAll('.nav-button');
+        navLinks.forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                gsap.to(window, {
+                    duration: 2.5,
+                    scrollTo: { y: targetId, offsetY: 50 },
+                    ease: 'power2.inOut'
+                });
+            });
+        });
+
+        const rpgButtons = document.querySelectorAll('.rpg-button');
+        const showcases = document.querySelectorAll('.project-showcase');
+        rpgButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (button.classList.contains('active')) return;
+                const targetId = button.dataset.target;
+                rpgButtons.forEach(btn => btn.classList.toggle('active', btn === button));
+                showcases.forEach(sc => sc.classList.toggle('active', sc.id === targetId));
+                gsap.timeline()
+                    .to(carContainer, { x: '+=25', rotation: 10, duration: 0.2 })
+                    .to(carContainer, { x: '-=25', rotation: -12, duration: 0.6, ease: 'elastic.out(1, 0.6)' });
+                gsap.fromTo(`#${targetId}`, {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5});
+            });
+        });
+    </script>
+</body>
+</html>
+
